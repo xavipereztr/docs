@@ -5,7 +5,7 @@ title: Overture + Lonboard
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-In this example, we'll walk through three ways to fetch, process, and visualize Overture data in a Jupyter notebook using [Lonboard](https://developmentseed.org/lonboard/latest/) and the [overturemaps-py](https://github.com/OvertureMaps/overturemaps-py) library. [Lonboard](https://developmentseed.org/lonboard/latest/) is a Python library that makes visualizing large map datasets in Jupyter notebooks fast and efficient. It's built on [GeoArrow](https://geoarrow.org/) and [GeoParquet](https://arrow.apache.org/docs/python/index.html), which creates an opportunity for a fully binary workflow with Overture data.
+These examples show you how to download, process, and then visualize Overture data in a Jupyter notebook using [Lonboard](https://developmentseed.org/lonboard/latest/), a Python library for fast, interactive geospatial vector data visualization.
 
 <details>
 
@@ -15,21 +15,68 @@ In this example, we'll walk through three ways to fetch, process, and visualize 
     </summary>
 To follow along with these examples, you should have [JupyterLab or Jupyter Notebook](https://jupyter.org/) running and the following dependencies installed:
 
-- [Lonboard](https://developmentseed.org/lonboard/latest/#install)
-- [overturemaps-py](https://github.com/OvertureMaps/overturemaps-py)
-- [GeoPandas](https://geopandas.org/en/stable/index.html)
-- [Pandas](https://pandas.pydata.org/)
-- [Shapely](https://shapely.readthedocs.io/en/stable/)
+ - [Lonboard](https://developmentseed.org/lonboard/latest/#install)
+ - [GeoPandas](https://geopandas.org/en/stable/index.html)
+ - [Shapely](https://shapely.readthedocs.io/en/stable/)
+-  [overturemaps-py](https://github.com/OvertureMaps/overturemaps-py) (last example)
 
 </details>
 
 The examples below are available in [the notebooks directory](//github.com/OvertureMaps/docs/tree/main/static/notebooks) in our docs repository on GitHub.
 
-## Examples
+## Lonboard & DuckDB
+
+The `from_duckdb()` function lets us query Overture data using DuckDB and then pass in the resulting table directly to Lonboard. This is extremely performant because it leverages arrow tables.
+
+1. Requirements
+    ```python
+    import duckdb
+    from lonboard import Map, PolygonLayer
+    ```
+
+2. Use DuckDB in python to create a table with building geometries and heights:
+
+    ```python
+    con = duckdb.connect("demo.dbb") # Create a DB file for persistence
+    con.sql("INSTALL SPATIAL; LOAD SPATIAL;")
+    con.sql("""
+    CREATE OR REPLACE TABLE nyc_buildings AS
+        SELECT
+            id, IF(height IS NULL,3,height) as height, geometry
+        FROM
+            read_parquet('s3://overturemaps-us-west-2/release/2024-11-13.0/theme=buildings/type=building/*')
+        WHERE
+            (bbox.xmin BETWEEN -74.021089 AND -73.966989) AND (bbox.ymin BETWEEN 40.699531  AND 40.757202)
+    """)
+    ```
+
+3. Pass the table directly into lonboard, including heights for 3d extrusion:
+
+    ```python
+    layer = PolygonLayer.from_duckdb(
+        con.table("nyc_buildings").select('geometry'),
+        con,
+        extruded=True,
+        get_elevation=con.table("nyc_buildings").arrow()['height'],
+        get_fill_color='orangered',
+        opacity=0.5,
+    )
+    m = Map(layer)
+    m
+    ```
+
+    ![](/img/examples/nyc_3d_buildings_lonboard.png)
+
+
+---
+
+
+
+## GeoArrow
 
 In the first and simplest example, we'll use the [record_batch_reader](https://github.com/OvertureMaps/overturemaps-py/blob/e9632d4d2481a472a22dfd2d0a47ec9798ced9ef/overturemaps/core.py#L17) method in the overturemaps-py library to load Overture GeoParquet data directly into a PyArrow table. Then we'll use lonboard's built-in visualization tools to create an interactive map.
 
-### GeoArrow
+
 
  First, let's import our toolkit.
 
@@ -45,7 +92,7 @@ Next we'll get a bounding box for our area of interest.
 bbox = 9.125034,45.433352,9.245223,45.507116
 ```
 
-The `record_batch_reader` function accepts an Overture feature type and a bounding box as arguments. **Note: `.read_all()` will load all of the requested bbox into memory, so it's wise to keep the bbox reasonably small.** 
+The `record_batch_reader` function accepts an Overture feature type and a bounding box as arguments. **Note: `.read_all()` will load all of the requested bbox into memory, so it's wise to keep the bbox reasonably small.**
 
 Let's grab some road data for Milan.
 
@@ -60,7 +107,7 @@ We can inspect shape of the data.
 table.shape
 ```
 
-We can also dig into the complexity of the Overture transportation schema. 
+We can also dig into the complexity of the Overture transportation schema.
 
 ```python
 table.schema
@@ -86,7 +133,7 @@ m
 
 ![roads in Milan](/img/examples/road-network-milan.png)
 
-### GeoPandas 
+### GeoPandas
 
 In the second example, we'll add a few steps in the notebook to convert the PyArrow table to a GeoPandas GeoDataFrame. Getting the data into a GeoDataFrame requires a few more tools, depending on which methods we use. Here's our expanded toolkit:
 
