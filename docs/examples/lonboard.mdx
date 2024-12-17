@@ -18,15 +18,15 @@ To follow along with these examples, you should have [JupyterLab or Jupyter Note
  - [Lonboard](https://developmentseed.org/lonboard/latest/#install)
  - [GeoPandas](https://geopandas.org/en/stable/index.html)
  - [Shapely](https://shapely.readthedocs.io/en/stable/)
--  [overturemaps-py](https://github.com/OvertureMaps/overturemaps-py) (last example)
+-  [overturemaps-py](https://github.com/OvertureMaps/overturemaps-py)
 
 </details>
 
 The examples below are available in [the notebooks directory](//github.com/OvertureMaps/docs/tree/main/static/notebooks) in our docs repository on GitHub.
 
-## Lonboard & DuckDB
+## Using DuckDB
 
-The `from_duckdb()` function lets us query Overture data using DuckDB and then pass in the resulting table directly to Lonboard. This is extremely performant because it leverages arrow tables.
+The [`from_duckdb()`](https://developmentseed.org/lonboard/latest/api/layers/base-layer/#lonboard.BaseArrowLayer.from_duckdb) function allows us to download Overture data with DuckDB and then pass the resulting table directly into Lonboard.
 
 1. Requirements
     ```python
@@ -65,14 +65,16 @@ The `from_duckdb()` function lets us query Overture data using DuckDB and then p
     m
     ```
 
-    ![](/img/examples/nyc_3d_buildings_lonboard.png)
+    <!-- ![](/img/examples/nyc_3d_buildings_lonboard.png) -->
+    ![](/img/examples/nyc_buildings.gif)
 
 
 ---
 
 
 
-## GeoArrow
+## GeoArrow with OvertureMaps-py
+
 
 In the first and simplest example, we'll use the [record_batch_reader](https://github.com/OvertureMaps/overturemaps-py/blob/e9632d4d2481a472a22dfd2d0a47ec9798ced9ef/overturemaps/core.py#L17) method in the overturemaps-py library to load Overture GeoParquet data directly into a PyArrow table. Then we'll use lonboard's built-in visualization tools to create an interactive map.
 
